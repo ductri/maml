@@ -29,8 +29,8 @@ import pickle
 import random
 import tensorflow as tf
 
-from data_generator import DataGenerator
-from maml import MAML
+from original_source.data_generator import DataGenerator
+from original_source.maml import MAML
 from tensorflow.python.platform import flags
 
 FLAGS = flags.FLAGS

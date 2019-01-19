@@ -5,7 +5,7 @@ import random
 import tensorflow as tf
 
 from tensorflow.python.platform import flags
-from utils import get_images
+from original_source.utils import get_images
 
 FLAGS = flags.FLAGS
 

@@ -4,13 +4,13 @@ import numpy as np
 import sys
 import tensorflow as tf
 try:
-    import special_grads
+    from original_source import special_grads
 except KeyError as e:
     print('WARN: Cannot define MaxPoolGrad, likely already defined for this version of tensorflow: %s' % e,
           file=sys.stderr)
 
 from tensorflow.python.platform import flags
-from utils import mse, xent, conv_block, normalize
+from original_source.utils import mse, xent, conv_block, normalize
 
 FLAGS = flags.FLAGS
 
