@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 import time
 
 from naruto_skills import graph_utils
-from model_def.data_generator import DataGenerator
+from model_def.data_generator_2 import DataGenerator2
 from model_def.sine_model import SineModel
 
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == '__main__':
     with tf.Graph().as_default() as gr:
-        no_task, no_sample, input_dim, output_dim = 32, None, 1, 1
+        no_task, no_sample, input_dim, output_dim = 64, None, 1, 1
         meta_lr = 1e-3
 
         tf_X_train = tf.placeholder(dtype=tf.float32, shape=(no_task, no_sample, input_dim), name='X_train')
@@ -50,7 +50,7 @@ if __name__ == '__main__':
         tf_global_step = tf.get_variable(name='global_step', dtype=tf.int32, initializer=0)
         tf_task_global_step = tf.get_variable(name='task_global_step', dtype=tf.int32, initializer=0)
         tf_optimizer_op = tf.train.AdamOptimizer(meta_lr).minimize(tf_mean_eval_loss, global_step=tf_global_step)
-        tf_task_optimizer_op = tf.train.AdamOptimizer(meta_lr).minimize(tf_train_losses[0],
+        tf_task_optimizer_op = tf.train.AdamOptimizer(meta_lr/100).minimize(tf_train_losses[0],
                                                                         global_step=tf_task_global_step)
 
         tf_mean_train_loss = tf.reduce_mean(tf.stack(tf_train_losses, axis=0), axis=0)
@@ -61,13 +61,13 @@ if __name__ == '__main__':
 
         logging.info('Total vars: %s' % graph_utils.count_trainable_variables())
 
-        data_generator = DataGenerator(num_samples_per_task=10, batch_size=32)
-
+        data_generator = DataGenerator2()
+        data_generator_train = data_generator.generate_train()
         with tf.Session().as_default() as sess:
             sess.run(tf.global_variables_initializer())
             start = time.time()
             for _ in range(10000):
-                inputs, outputs, _, _ = data_generator.generate_sinusoid_batch()
+                inputs, outputs = next(data_generator_train)
                 input_train, input_eval, output_train, output_eval = inputs[:, :5], inputs[:, 5:], outputs[:,
                                                                                                    :5], outputs[:, 5:]
                 _, global_step = sess.run([tf_optimizer_op, tf_global_step],
@@ -79,15 +79,15 @@ if __name__ == '__main__':
                                                                           tf_X_eval: input_eval,
                                                                           tf_y_train: output_train,
                                                                           tf_y_eval: output_eval})
-                    logging.info('Step: %s\tMean train loss: %s \tMean eval loss: %s\t Duration: %.2f s', global_step,
+                    logging.info('Step: %s\tMean train loss: %.5f \tMean eval loss: %.5f\t Duration: %.2f s', global_step,
                                  mean_train_loss, mean_eval_loss, time.time() - start)
                     start = time.time()
 
         logging.info('Training done. Evaluate on novel task')
         logging.info('\n')
         # Actually, we're training for the last task
-        data_generator = DataGenerator(num_samples_per_task=100, batch_size=32)
-        inputs, outputs, _, _ = data_generator.generate_sinusoid_batch()
+        data_generator_test = data_generator.generate_test()
+        inputs, outputs = next(data_generator_test)
         train_size = 5
         input_train, input_eval, output_train, output_eval = inputs[:, :train_size], inputs[:, train_size:], \
                                                              outputs[:, :train_size], outputs[:, train_size:]
@@ -98,7 +98,7 @@ if __name__ == '__main__':
                        tf_y_eval: output_eval})
         logging.info('Step: %s\t Train loss: %.5f\t Eval loss: %.5f', task_global_step, task_train_loss, task_eval_loss)
         # Update gradient exactly xx times
-        for _ in range(500):
+        for _ in range(100):
             _, task_global_step, task_train_loss, task_eval_loss = sess.run(
                 [tf_task_optimizer_op, tf_task_global_step, tf_train_losses[task_idx], tf_eval_losses[task_idx]],
                 feed_dict={tf_X_train: input_train, tf_y_train: output_train, tf_X_eval: input_eval,
